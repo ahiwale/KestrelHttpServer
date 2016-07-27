@@ -435,5 +435,15 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(knownString1, expected);
             Assert.Same(knownString1, knownString2);
         }
+
+        // TestSeekByteCountWithinSameBlock
+        // TestSeekByteCountAcrossBlocks
+        // TestSeekByteCountAcrossEmptyBlocks
+        // TestSeekByteLimitWithinSameBlock
+        // TestSeekByteLimitAcrossBlocks
+        // TestSeekByteLimitAcrossEmptyBlocks
+        // TestSeekIteratorLimitWithinSameBlock
+        // TestSeekIteratorLimitAcrossBlocks
+        // TestSeekIteratorLimitAcrossEmptyBlocks
     }
 }

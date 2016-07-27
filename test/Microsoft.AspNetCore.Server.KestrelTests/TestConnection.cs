@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var task = _reader.ReadAsync(actual, offset, actual.Length - offset);
                 if (!Debugger.IsAttached)
                 {
-                    Assert.True(task.Wait(4000), "timeout");
+                    Assert.True(await Task.WhenAny(task, Task.Delay(4000)) == task, "TestConnection.Receive timed out.");
                 }
                 var count = await task;
                 if (count == 0)

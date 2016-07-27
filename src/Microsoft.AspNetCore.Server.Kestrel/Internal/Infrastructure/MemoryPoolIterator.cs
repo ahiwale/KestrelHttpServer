@@ -217,9 +217,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public unsafe int Seek(ref Vector<byte> byte0Vector)
         {
+            int bytesScanned;
+            return Seek(ref byte0Vector, out bytesScanned);
+        }
+
+        public unsafe int Seek(ref Vector<byte> byte0Vector, int limit, out int bytesScanned)
+        {
+            return Seek(ref byte0Vector, out bytesScanned, limitBytes: limit);
+        }
+
+        public unsafe int Seek(ref Vector<byte> byte0Vector, MemoryPoolIterator limit)
+        {
+            int bytesScanned;
+            return Seek(ref byte0Vector, out bytesScanned, limitIterator: limit);
+        }
+
+        private unsafe int Seek(
+            ref Vector<byte> byte0Vector,
+            out int bytesScanned,
+            int limitBytes = int.MaxValue,
+            MemoryPoolIterator limitIterator = new MemoryPoolIterator())
+        {
+            bytesScanned = 0;
+
             if (IsDefault)
             {
                 return -1;
+            }
+
+            if (limitBytes != int.MaxValue && !limitIterator.IsDefault)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(limitBytes)} and {nameof(limitIterator)} cannot be set at the same time.");
             }
 
             var block = _block;
@@ -233,12 +262,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 while (following == 0)
                 {
+                    if (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index)
+                    {
+                        return -1;
+                    }
+
                     if (wasLastBlock)
                     {
                         _block = block;
                         _index = index;
                         return -1;
                     }
+
                     block = block.Next;
                     index = block.Start;
                     wasLastBlock = block.Next == null;
@@ -261,11 +296,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             {
                                 following -= _vectorSpan;
                                 index += _vectorSpan;
+                                bytesScanned += _vectorSpan;
+
+                                if ((bytesScanned > limitBytes) ||
+                                    (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index))
+                                {
+                                    return -1;
+                                }
+
                                 continue;
                             }
 
+                            var firstEqualByteIndex = FindFirstEqualByte(ref byte0Equals);
+                            bytesScanned += firstEqualByteIndex + 1;
+
+                            if ((bytesScanned > limitBytes) ||
+                                (!limitIterator.IsDefault && block == limitIterator.Block && (index + firstEqualByteIndex) > limitIterator.Index))
+                            {
+                                return -1;
+                            }
+
                             _block = block;
-                            _index = index + FindFirstEqualByte(ref byte0Equals);
+                            _index = index + firstEqualByteIndex;
                             return byte0;
                         }
 // Need unit tests to test Vector path
@@ -285,6 +337,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                         }
                         pCurrent++;
                         index++;
+                        bytesScanned++;
+
+                        if ((bytesScanned > limitBytes) ||
+                            (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index))
+                        {
+                            return -1;
+                        }
                     } while (pCurrent < pEnd);
 
                     following = 0;
@@ -293,7 +352,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
-        public unsafe int Seek(ref Vector<byte> byte0Vector, ref Vector<byte> byte1Vector)
+        public unsafe int Seek(
+            ref Vector<byte> byte0Vector,
+            ref Vector<byte> byte1Vector,
+            MemoryPoolIterator limit = new MemoryPoolIterator())
         {
             if (IsDefault)
             {
@@ -398,7 +460,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             }
         }
 
-        public unsafe int Seek(ref Vector<byte> byte0Vector, ref Vector<byte> byte1Vector, ref Vector<byte> byte2Vector)
+        public unsafe int Seek(
+            ref Vector<byte> byte0Vector,
+            ref Vector<byte> byte1Vector,
+            ref Vector<byte> byte2Vector,
+            MemoryPoolIterator limit = new MemoryPoolIterator())
         {
             if (IsDefault)
             {

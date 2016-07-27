@@ -92,7 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             switch (reason)
             {
                 case RequestRejectionReason.MalformedRequestLineStatus:
-                    ex = new BadHttpRequestException($"Malformed request: {value}");
+                    ex = new BadHttpRequestException($"Invalid request line: {value}");
                     break;
                 case RequestRejectionReason.InvalidContentLength:
                     ex = new BadHttpRequestException($"Invalid content length: {value}");
