@@ -406,6 +406,268 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             TestKnownStringsInterning(input, expected, MemoryPoolIteratorExtensions.GetKnownMethod);
         }
 
+        [Theory]
+        [InlineData("hello, world", 'h', 12, 1, 'h')]
+        [InlineData("hello, world", ' ', 12, 7, ' ')]
+        [InlineData("hello, world", 'd', 12, 12, 'd')]
+        [InlineData("hello, world", '!', 12, 12, -1)]
+        [InlineData("hello, world", 'h', 13, 1, 'h')]
+        [InlineData("hello, world", ' ', 13, 7, ' ')]
+        [InlineData("hello, world", 'd', 13, 12, 'd')]
+        [InlineData("hello, world", '!', 13, 12, -1)]
+        [InlineData("hello, world", 'h', 5, 1, 'h')]
+        [InlineData("hello, world", 'o', 5, 5, 'o')]
+        [InlineData("hello, world", ',', 5, 6, -1)]
+        [InlineData("hello, world", 'd', 5, 6, -1)]
+        [InlineData("abba", 'a', 4, 1, 'a')]
+        [InlineData("abba", 'b', 4, 2, 'b')]
+        public void TestSeekByteLimitWithinSameBlock(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
+        {
+            // Arrange
+            var seekVector = new Vector<byte>((byte)seek);
+            var block = _pool.Lease();
+            var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
+            block.End += chars.Length;
+            var scan = block.GetIterator();
+
+            // Act
+            int bytesScanned;
+            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
+
+            // Assert
+            Assert.Equal(expectedBytesScanned, bytesScanned);
+            Assert.Equal(expectedReturnValue, returnValue);
+
+            // Cleanup
+            _pool.Return(block);
+        }
+
+        [Theory]
+        [InlineData("hello, world", 'h', 12, 1, 'h')]
+        [InlineData("hello, world", ' ', 12, 7, ' ')]
+        [InlineData("hello, world", 'd', 12, 12, 'd')]
+        [InlineData("hello, world", '!', 12, 12, -1)]
+        [InlineData("hello, world", 'h', 13, 1, 'h')]
+        [InlineData("hello, world", ' ', 13, 7, ' ')]
+        [InlineData("hello, world", 'd', 13, 12, 'd')]
+        [InlineData("hello, world", '!', 13, 12, -1)]
+        [InlineData("hello, world", 'h', 5, 1, 'h')]
+        [InlineData("hello, world", 'o', 5, 5, 'o')]
+        [InlineData("hello, world", ',', 5, 6, -1)]
+        [InlineData("hello, world", 'd', 5, 6, -1)]
+        [InlineData("abba", 'a', 4, 1, 'a')]
+        [InlineData("abba", 'b', 4, 2, 'b')]
+        public void TestSeekByteLimitAcrossBlocks(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
+        {
+            // Arrange
+            var seekVector = new Vector<byte>((byte)seek);
+
+            var input1 = input.Substring(0, input.Length / 2);
+            var block1 = _pool.Lease();
+            var chars1 = input1.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars1, 0, block1.Array, block1.Start, chars1.Length);
+            block1.End += chars1.Length;
+
+            var input2 = input.Substring(input.Length / 2);
+            var block2 = _pool.Lease();
+            var chars2 = input2.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars2, 0, block2.Array, block2.Start, chars2.Length);
+            block2.End += chars2.Length;
+            block1.Next = block2;
+
+            var scan = block1.GetIterator();
+
+            // Act
+            int bytesScanned;
+            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
+
+            // Assert
+            Assert.Equal(expectedBytesScanned, bytesScanned);
+            Assert.Equal(expectedReturnValue, returnValue);
+
+            // Cleanup
+            _pool.Return(block1);
+            _pool.Return(block2);
+        }
+
+        [Theory]
+        [InlineData("hello, world", 'h', 12, 1, 'h')]
+        [InlineData("hello, world", ' ', 12, 7, ' ')]
+        [InlineData("hello, world", 'd', 12, 12, 'd')]
+        [InlineData("hello, world", '!', 12, 12, -1)]
+        [InlineData("hello, world", 'h', 13, 1, 'h')]
+        [InlineData("hello, world", ' ', 13, 7, ' ')]
+        [InlineData("hello, world", 'd', 13, 12, 'd')]
+        [InlineData("hello, world", '!', 13, 12, -1)]
+        [InlineData("hello, world", 'h', 5, 1, 'h')]
+        [InlineData("hello, world", 'o', 5, 5, 'o')]
+        [InlineData("hello, world", ',', 5, 6, -1)]
+        [InlineData("hello, world", 'd', 5, 6, -1)]
+        [InlineData("abba", 'a', 4, 1, 'a')]
+        [InlineData("abba", 'b', 4, 2, 'b')]
+        public void TestSeekByteLimitAcrossEmptyBlocks(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
+        {
+            // Arrange
+            var seekVector = new Vector<byte>((byte)seek);
+
+            var input1 = input.Substring(0, input.Length / 2);
+            var block1 = _pool.Lease();
+            var chars1 = input1.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars1, 0, block1.Array, block1.Start, chars1.Length);
+            block1.End += chars1.Length;
+
+            var emptyBlock = _pool.Lease();
+            block1.Next = emptyBlock;
+
+            var input2 = input.Substring(input.Length / 2);
+            var block2 = _pool.Lease();
+            var chars2 = input2.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars2, 0, block2.Array, block2.Start, chars2.Length);
+            block2.End += chars2.Length;
+            emptyBlock.Next = block2;
+
+            var scan = block1.GetIterator();
+
+            // Act
+            int bytesScanned;
+            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
+
+            // Assert
+            Assert.Equal(expectedBytesScanned, bytesScanned);
+            Assert.Equal(expectedReturnValue, returnValue);
+
+            // Cleanup
+            _pool.Return(block1);
+            _pool.Return(emptyBlock);
+            _pool.Return(block2);
+        }
+
+        [Theory]
+        [InlineData("hello, world", 'h', 'd', 'h')]
+        [InlineData("hello, world", ' ', 'd', ' ')]
+        [InlineData("hello, world", 'd', 'd', 'd')]
+        [InlineData("hello, world", '!', 'd', -1)]
+        [InlineData("hello, world", 'h', 'o', 'h')]
+        [InlineData("hello, world", 'o', 'o', 'o')]
+        [InlineData("hello, world", ',', 'o', -1)]
+        [InlineData("hello, world", 'd', 'o', -1)]
+        public void TestSeekIteratorLimitWithinSameBlock(string input, char seek, char limitAt, int expectedReturnValue)
+        {
+            // Arrange
+            var seekVector = new Vector<byte>((byte)seek);
+            var limitAtVector = new Vector<byte>((byte)limitAt);
+            var block = _pool.Lease();
+            var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
+            block.End += chars.Length;
+            var scan = block.GetIterator();
+            var end = scan;
+
+            // Act
+            var endReturnValue = end.Seek(ref limitAtVector);
+            var returnValue = scan.Seek(ref seekVector, end);
+
+            // Assert
+            Assert.Equal(endReturnValue, limitAt);
+            Assert.Equal(expectedReturnValue, returnValue);
+
+            // Cleanup
+            _pool.Return(block);
+        }
+
+        [Theory]
+        [InlineData("hello, world", 'h', 'd', 'h')]
+        [InlineData("hello, world", ' ', 'd', ' ')]
+        [InlineData("hello, world", 'd', 'd', 'd')]
+        [InlineData("hello, world", '!', 'd', -1)]
+        [InlineData("hello, world", 'h', 'w', 'h')]
+        [InlineData("hello, world", 'o', 'w', 'o')]
+        [InlineData("hello, world", 'r', 'w', -1)]
+        [InlineData("hello, world", 'd', 'w', -1)]
+        public void TestSeekIteratorLimitAcrossBlocks(string input, char seek, char limitAt, int expectedReturnValue)
+        {
+            // Arrange
+            var seekVector = new Vector<byte>((byte)seek);
+            var limitAtVector = new Vector<byte>((byte)limitAt);
+
+            var input1 = input.Substring(0, input.Length / 2);
+            var block1 = _pool.Lease();
+            var chars1 = input1.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars1, 0, block1.Array, block1.Start, chars1.Length);
+            block1.End += chars1.Length;
+
+            var input2 = input.Substring(input.Length / 2);
+            var block2 = _pool.Lease();
+            var chars2 = input2.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars2, 0, block2.Array, block2.Start, chars2.Length);
+            block2.End += chars2.Length;
+            block1.Next = block2;
+
+            var scan = block1.GetIterator();
+            var end = scan;
+
+            // Act
+            var endReturnValue = end.Seek(ref limitAtVector);
+            var returnValue = scan.Seek(ref seekVector, end);
+
+            // Assert
+            Assert.Equal(endReturnValue, limitAt);
+            Assert.Equal(expectedReturnValue, returnValue);
+
+            // Cleanup
+            _pool.Return(block1);
+            _pool.Return(block2);
+        }
+
+        [Theory]
+        [InlineData("hello, world", 'h', 'd', 'h')]
+        [InlineData("hello, world", ' ', 'd', ' ')]
+        [InlineData("hello, world", 'd', 'd', 'd')]
+        [InlineData("hello, world", '!', 'd', -1)]
+        [InlineData("hello, world", 'h', 'w', 'h')]
+        [InlineData("hello, world", 'o', 'w', 'o')]
+        [InlineData("hello, world", 'r', 'w', -1)]
+        [InlineData("hello, world", 'd', 'w', -1)]
+        public void TestSeekIteratorLimitAcrossEmptyBlocks(string input, char seek, char limitAt, int expectedReturnValue)
+        {
+            // Arrange
+            var seekVector = new Vector<byte>((byte)seek);
+            var limitAtVector = new Vector<byte>((byte)limitAt);
+
+            var input1 = input.Substring(0, input.Length / 2);
+            var block1 = _pool.Lease();
+            var chars1 = input1.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars1, 0, block1.Array, block1.Start, chars1.Length);
+            block1.End += chars1.Length;
+
+            var emptyBlock = _pool.Lease();
+            block1.Next = emptyBlock;
+
+            var input2 = input.Substring(input.Length / 2);
+            var block2 = _pool.Lease();
+            var chars2 = input2.ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars2, 0, block2.Array, block2.Start, chars2.Length);
+            block2.End += chars2.Length;
+            emptyBlock.Next = block2;
+
+            var scan = block1.GetIterator();
+            var end = scan;
+
+            // Act
+            var endReturnValue = end.Seek(ref limitAtVector);
+            var returnValue = scan.Seek(ref seekVector, end);
+
+            // Assert
+            Assert.Equal(endReturnValue, limitAt);
+            Assert.Equal(expectedReturnValue, returnValue);
+
+            // Cleanup
+            _pool.Return(block1);
+            _pool.Return(emptyBlock);
+            _pool.Return(block2);
+        }
+
         private delegate bool GetKnownString(MemoryPoolIterator iter, out string result);
 
         private void TestKnownStringsInterning(string input, string expected, GetKnownString action)
@@ -435,15 +697,5 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(knownString1, expected);
             Assert.Same(knownString1, knownString2);
         }
-
-        // TestSeekByteCountWithinSameBlock
-        // TestSeekByteCountAcrossBlocks
-        // TestSeekByteCountAcrossEmptyBlocks
-        // TestSeekByteLimitWithinSameBlock
-        // TestSeekByteLimitAcrossBlocks
-        // TestSeekByteLimitAcrossEmptyBlocks
-        // TestSeekIteratorLimitWithinSameBlock
-        // TestSeekIteratorLimitAcrossBlocks
-        // TestSeekIteratorLimitAcrossEmptyBlocks
     }
 }

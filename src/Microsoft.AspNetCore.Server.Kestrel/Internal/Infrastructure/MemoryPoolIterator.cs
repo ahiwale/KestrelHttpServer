@@ -329,6 +329,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     var pEnd = pCurrent + following;
                     do
                     {
+                        bytesScanned++;
+
+                        if ((bytesScanned > limitBytes) ||
+                            (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index))
+                        {
+                            return -1;
+                        }
+
                         if (*pCurrent == byte0)
                         {
                             _block = block;
@@ -337,13 +345,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                         }
                         pCurrent++;
                         index++;
-                        bytesScanned++;
-
-                        if ((bytesScanned > limitBytes) ||
-                            (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index))
-                        {
-                            return -1;
-                        }
                     } while (pCurrent < pEnd);
 
                     following = 0;
