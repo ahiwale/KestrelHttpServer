@@ -785,7 +785,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             SocketOutput.ProducingComplete(end);
         }
 
-        protected RequestLineStatus TakeStartLine(SocketInput input, int maxLength = int.MaxValue)
+        protected RequestLineStatus TakeStartLine(SocketInput input)
         {
             var scan = input.ConsumingStart();
             var consumed = scan;
@@ -804,13 +804,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var end = scan;
                 int bytesScanned;
-                if (end.Seek(ref _vectorLFs, maxLength, out bytesScanned) == -1)
+                if (ServerOptions.MaxRequestLineSize.HasValue)
                 {
-                    if (bytesScanned > maxLength)
+                    if (end.Seek(ref _vectorLFs, ServerOptions.MaxRequestLineSize.Value, out bytesScanned) == -1)
                     {
-                        RejectRequest(RequestRejectionReason.RequestLineTooLong);
+                        if (bytesScanned > ServerOptions.MaxRequestLineSize.Value)
+                        {
+                            RejectRequest(RequestRejectionReason.RequestLineTooLong);
+                        }
+                        else
+                        {
+                            return RequestLineStatus.Incomplete;
+                        }
                     }
-                    else
+                }
+                else
+                {
+                    if (end.Seek(ref _vectorLFs) == -1)
                     {
                         return RequestLineStatus.Incomplete;
                     }
