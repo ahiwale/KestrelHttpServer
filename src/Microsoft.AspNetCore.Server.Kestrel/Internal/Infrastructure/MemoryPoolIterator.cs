@@ -262,7 +262,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 while (following == 0)
                 {
-                    if (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index)
+                    if ((bytesScanned > limitBytes) ||
+                        (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index))
                     {
                         return -1;
                     }
@@ -377,6 +378,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 while (following == 0)
                 {
+                    if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                    {
+                        return -1;
+                    }
+
                     if (wasLastBlock)
                     {
                         _block = block;
@@ -417,6 +423,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             {
                                 following -= _vectorSpan;
                                 index += _vectorSpan;
+
+                                if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                                {
+                                    return -1;
+                                }
+
                                 continue;
                             }
 
@@ -425,10 +437,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             if (byte0Index < byte1Index)
                             {
                                 _index = index + byte0Index;
+
+                                if (!limit.IsDefault && block == limit.Block && _index > limit.Index)
+                                {
+                                    return -1;
+                                }
+
                                 return byte0;
                             }
 
                             _index = index + byte1Index;
+
+                            if (!limit.IsDefault && block == limit.Block && _index > limit.Index)
+                            {
+                                return -1;
+                            }
+
                             return byte1;
                         }
 // Need unit tests to test Vector path
@@ -439,6 +463,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     var pEnd = pCurrent + following;
                     do
                     {
+                        if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                        {
+                            return -1;
+                        }
+
                         if (*pCurrent == byte0)
                         {
                             _block = block;
@@ -488,6 +517,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 while (following == 0)
                 {
+                    if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                    {
+                        return -1;
+                    }
+
                     if (wasLastBlock)
                     {
                         _block = block;
@@ -532,6 +566,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             {
                                 following -= _vectorSpan;
                                 index += _vectorSpan;
+
+                                if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                                {
+                                    return -1;
+                                }
+
                                 continue;
                             }
 
@@ -566,6 +606,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             }
 
                             _index = index + toMove;
+
+                            if (!limit.IsDefault && block == limit.Block && _index > limit.Index)
+                            {
+                                return -1;
+                            }
+
                             return toReturn;
                         }
 // Need unit tests to test Vector path
@@ -576,6 +622,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     var pEnd = pCurrent + following;
                     do
                     {
+                        if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                        {
+                            return -1;
+                        }
+
                         if (*pCurrent == byte0)
                         {
                             _block = block;

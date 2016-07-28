@@ -509,52 +509,47 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("hello, world", 'h', 'd', 'h')]
-        [InlineData("hello, world", ' ', 'd', ' ')]
-        [InlineData("hello, world", 'd', 'd', 'd')]
-        [InlineData("hello, world", '!', 'd', -1)]
-        [InlineData("hello, world", 'h', 'o', 'h')]
-        [InlineData("hello, world", 'o', 'o', 'o')]
-        [InlineData("hello, world", ',', 'o', -1)]
-        [InlineData("hello, world", 'd', 'o', -1)]
+        [MemberData(nameof(SeekIteratorLimitData))]
         public void TestSeekIteratorLimitWithinSameBlock(string input, char seek, char limitAt, int expectedReturnValue)
         {
             // Arrange
             var seekVector = new Vector<byte>((byte)seek);
             var limitAtVector = new Vector<byte>((byte)limitAt);
+            var afterSeekVector = new Vector<byte>((byte)'B');
+
             var block = _pool.Lease();
             var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
             Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
             block.End += chars.Length;
-            var scan = block.GetIterator();
-            var end = scan;
+            var scan1 = block.GetIterator();
+            var scan2 = scan1;
+            var scan3 = scan1;
+            var end = scan1;
 
             // Act
             var endReturnValue = end.Seek(ref limitAtVector);
-            var returnValue = scan.Seek(ref seekVector, end);
+            var returnValue1 = scan1.Seek(ref seekVector, end);
+            var returnValue2 = scan2.Seek(ref afterSeekVector, ref seekVector, end);
+            var returnValue3 = scan3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
 
             // Assert
-            Assert.Equal(endReturnValue, limitAt);
-            Assert.Equal(expectedReturnValue, returnValue);
+            Assert.Equal(input.Contains(limitAt) ? limitAt : -1, endReturnValue);
+            Assert.Equal(expectedReturnValue, returnValue1);
+            Assert.Equal(expectedReturnValue, returnValue2);
+            Assert.Equal(expectedReturnValue, returnValue3);
 
             // Cleanup
             _pool.Return(block);
         }
 
         [Theory]
-        [InlineData("hello, world", 'h', 'd', 'h')]
-        [InlineData("hello, world", ' ', 'd', ' ')]
-        [InlineData("hello, world", 'd', 'd', 'd')]
-        [InlineData("hello, world", '!', 'd', -1)]
-        [InlineData("hello, world", 'h', 'w', 'h')]
-        [InlineData("hello, world", 'o', 'w', 'o')]
-        [InlineData("hello, world", 'r', 'w', -1)]
-        [InlineData("hello, world", 'd', 'w', -1)]
+        [MemberData(nameof(SeekIteratorLimitData))]
         public void TestSeekIteratorLimitAcrossBlocks(string input, char seek, char limitAt, int expectedReturnValue)
         {
             // Arrange
             var seekVector = new Vector<byte>((byte)seek);
             var limitAtVector = new Vector<byte>((byte)limitAt);
+            var afterSeekVector = new Vector<byte>((byte)'B');
 
             var input1 = input.Substring(0, input.Length / 2);
             var block1 = _pool.Lease();
@@ -569,16 +564,22 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             block2.End += chars2.Length;
             block1.Next = block2;
 
-            var scan = block1.GetIterator();
-            var end = scan;
+            var scan1 = block1.GetIterator();
+            var scan2 = scan1;
+            var scan3 = scan1;
+            var end = scan1;
 
             // Act
             var endReturnValue = end.Seek(ref limitAtVector);
-            var returnValue = scan.Seek(ref seekVector, end);
+            var returnValue1 = scan1.Seek(ref seekVector, end);
+            var returnValue2 = scan2.Seek(ref afterSeekVector, ref seekVector, end);
+            var returnValue3 = scan3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
 
             // Assert
-            Assert.Equal(endReturnValue, limitAt);
-            Assert.Equal(expectedReturnValue, returnValue);
+            Assert.Equal(input.Contains(limitAt) ? limitAt : -1, endReturnValue);
+            Assert.Equal(expectedReturnValue, returnValue1);
+            Assert.Equal(expectedReturnValue, returnValue2);
+            Assert.Equal(expectedReturnValue, returnValue3);
 
             // Cleanup
             _pool.Return(block1);
@@ -586,19 +587,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("hello, world", 'h', 'd', 'h')]
-        [InlineData("hello, world", ' ', 'd', ' ')]
-        [InlineData("hello, world", 'd', 'd', 'd')]
-        [InlineData("hello, world", '!', 'd', -1)]
-        [InlineData("hello, world", 'h', 'w', 'h')]
-        [InlineData("hello, world", 'o', 'w', 'o')]
-        [InlineData("hello, world", 'r', 'w', -1)]
-        [InlineData("hello, world", 'd', 'w', -1)]
+        [MemberData(nameof(SeekIteratorLimitData))]
         public void TestSeekIteratorLimitAcrossEmptyBlocks(string input, char seek, char limitAt, int expectedReturnValue)
         {
             // Arrange
             var seekVector = new Vector<byte>((byte)seek);
             var limitAtVector = new Vector<byte>((byte)limitAt);
+            var afterSeekVector = new Vector<byte>((byte)'B');
 
             var input1 = input.Substring(0, input.Length / 2);
             var block1 = _pool.Lease();
@@ -616,16 +611,22 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             block2.End += chars2.Length;
             emptyBlock.Next = block2;
 
-            var scan = block1.GetIterator();
-            var end = scan;
+            var scan1 = block1.GetIterator();
+            var scan2 = scan1;
+            var scan3 = scan1;
+            var end = scan1;
 
             // Act
             var endReturnValue = end.Seek(ref limitAtVector);
-            var returnValue = scan.Seek(ref seekVector, end);
+            var returnValue1 = scan1.Seek(ref seekVector, end);
+            var returnValue2 = scan2.Seek(ref afterSeekVector, ref seekVector, end);
+            var returnValue3 = scan3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
 
             // Assert
-            Assert.Equal(endReturnValue, limitAt);
-            Assert.Equal(expectedReturnValue, returnValue);
+            Assert.Equal(input.Contains(limitAt) ? limitAt : -1, endReturnValue);
+            Assert.Equal(expectedReturnValue, returnValue1);
+            Assert.Equal(expectedReturnValue, returnValue2);
+            Assert.Equal(expectedReturnValue, returnValue3);
 
             // Cleanup
             _pool.Return(block1);
@@ -696,7 +697,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Two vectors, no seek char in input, expect failure
                 data.Add(new object[] { new string('a', vectorSpan * 2), 'b', vectorSpan * 2, vectorSpan * 2, -1 });
                 // Two vectors plus non vector length (thus hitting slow path too), no seek char in input, expect failure
-                data.Add(new object[] { new string('a', vectorSpan * 2 + vectorSpan / 3), 'b', vectorSpan * 2 + vectorSpan / 3, vectorSpan * 2 + vectorSpan / 3, -1 });
+                data.Add(new object[] { new string('a', vectorSpan * 2 + vectorSpan / 2), 'b', vectorSpan * 2 + vectorSpan / 2, vectorSpan * 2 + vectorSpan / 2, -1 });
 
                 // For each input length from 1/2 byte to 3 1/2 vector spans in 1/2 vector span increments...
                 for (var length = vectorSpan / 2; length <= vectorSpan * 3 + vectorSpan / 2; length += vectorSpan / 2)
@@ -705,7 +706,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     for (var i = 0; i < length; i += ((i + 1) % vectorSpan == 0) ? 1 : Math.Min(i + (vectorSpan - 1), length - 1))
                     {
                         var input = new StringBuilder(new string('a', length));
-                        input.Replace('a', 'b', i, 1);
+                        input[i] = 'b';
 
                         // ...and check with a seek byte limit before, at, and past the seek char position...
                         for (var limitOffset = -1; limitOffset <= 1; limitOffset++)
@@ -714,12 +715,12 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                             if (limit >= i + 1)
                             {
-                                // ...that Seek() succeeds when the seek char is within that limit
+                                // ...that Seek() succeeds when the seek char is within that limit...
                                 data.Add(new object[] { input.ToString(), 'b', limit, i + 1, 'b' });
                             }
                             else
                             {
-                                // ...or fails when it's not
+                                // ...or fails when it's not.
                                 data.Add(new object[] { input.ToString(), 'b', limit, limit + 1, -1 });
                             }
                         }
@@ -730,5 +731,59 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
         }
 
+        public static IEnumerable<object[]> SeekIteratorLimitData
+        {
+            get
+            {
+                var vectorSpan = Vector<byte>.Count;
+
+                // string input, char seek, char limitAt, int expectedReturnValue
+                var data = new List<object[]>();
+
+                // Non-vector inputs
+
+                data.Add(new object[] { "hello, world", 'h', 'd', 'h' });
+                data.Add(new object[] { "hello, world", ' ', 'd', ' ' });
+                data.Add(new object[] { "hello, world", 'd', 'd', 'd' });
+                data.Add(new object[] { "hello, world", '!', 'd', -1 });
+                data.Add(new object[] { "hello, world", 'h', 'w', 'h' });
+                data.Add(new object[] { "hello, world", 'o', 'w', 'o' });
+                data.Add(new object[] { "hello, world", 'r', 'w', -1 });
+                data.Add(new object[] { "hello, world", 'd', 'w', -1 });
+
+                // Vector inputs
+
+                // Single vector, no seek char in input, expect failure
+                data.Add(new object[] { new string('a', vectorSpan), 'b', 'b', -1 });
+                // Two vectors, no seek char in input, expect failure
+                data.Add(new object[] { new string('a', vectorSpan * 2), 'b', 'b', -1 });
+                // Two vectors plus non vector length (thus hitting slow path too), no seek char in input, expect failure
+                data.Add(new object[] { new string('a', vectorSpan * 2 + vectorSpan / 2), 'b', 'b', -1 });
+
+                // For each input length from 1/2 byte to 3 1/2 vector spans in 1/2 vector span increments...
+                for (var length = vectorSpan / 2; length <= vectorSpan * 3 + vectorSpan / 2; length += vectorSpan / 2)
+                {
+                    // ...place the seek char at vector and input boundaries...
+                    for (var i = 0; i < length; i += ((i + 1) % vectorSpan == 0) ? 1 : Math.Min(i + (vectorSpan - 1), length - 1))
+                    {
+                        var input = new StringBuilder(new string('a', length));
+                        input[i] = 'b';
+
+                        // ...along with sentinel characters to seek the limit iterator to...
+                        if (i > 0) input[i - 1] = 'A';
+                        if (i < length - 1) input[i + 1] = 'B';
+
+                        // ...and check with a seek iterator limit before, at, and past the seek char position that Seek() succeeds when the seek char is within that limit...
+                        data.Add(new object[] { input.ToString(), 'b', 'b', 'b' });
+                        if (i < length - 1) data.Add(new object[] { input.ToString(), 'b', 'B', 'b' });
+
+                        // ...or fails when it's not.
+                        if (i > 0) data.Add(new object[] { input.ToString(), 'b', 'A', -1 });
+                    }
+                }
+
+                return data;
+            }
+        }
     }
 }
