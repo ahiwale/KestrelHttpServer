@@ -1,8 +1,13 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Linq;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using System.Numerics;
 using Xunit;
+using System.Text;
+using System.Collections.Generic;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
@@ -21,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
-        public void FindFirstEqualByte()
+        public void TestFindFirstEqualByte()
         {
             var bytes = Enumerable.Repeat<byte>(0xff, Vector<byte>.Count).ToArray();
             for (int i = 0; i < Vector<byte>.Count; i++)
@@ -41,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
-        public void FindFirstEqualByteSlow()
+        public void TestFindFirstEqualByteSlow()
         {
             var bytes = Enumerable.Repeat<byte>(0xff, Vector<byte>.Count).ToArray();
             for (int i = 0; i < Vector<byte>.Count; i++)
@@ -444,6 +449,29 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
+        [MemberData(nameof(SeekByteLimitVectorData))]
+        public void TestSeekByteLimitWithinSameBlock_VectorPath(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
+        {
+            var seekVector = new Vector<byte>((byte)'b');
+            var block = _pool.Lease();
+            var chars = input.ToString().ToCharArray().Select(c => (byte)c).ToArray();
+            Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
+            block.End += chars.Length;
+            var scan = block.GetIterator();
+
+            // Act
+            int bytesScanned;
+            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
+
+            // Assert
+            Assert.Equal(expectedBytesScanned, bytesScanned);
+            Assert.Equal(expectedReturnValue, returnValue);
+
+            // Cleanup
+            _pool.Return(block);
+        }
+
+        [Theory]
         [InlineData("hello, world", 'h', 12, 1, 'h')]
         [InlineData("hello, world", ' ', 12, 7, ' ')]
         [InlineData("hello, world", 'd', 12, 12, 'd')]
@@ -697,5 +725,54 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(knownString1, expected);
             Assert.Same(knownString1, knownString2);
         }
+
+        public static IEnumerable<object[]> SeekByteLimitVectorData
+        {
+            get
+            {
+                var vectorSpan = Vector<byte>.Count;
+
+                // string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue
+                var data = new List<object[]>();
+
+                // Single vector, no seek char in input, expect failure
+                data.Add(new object[] { new string('a', vectorSpan), 'b', vectorSpan, vectorSpan, -1 });
+                // Two vectors, no seek char in input, expect failure
+                data.Add(new object[] { new string('a', vectorSpan * 2), 'b', vectorSpan * 2, vectorSpan * 2, -1 });
+                // Two vectors plus non vector length (thus hitting slow path too), no seek char in input, expect failure
+                data.Add(new object[] { new string('a', vectorSpan * 2 + vectorSpan / 3), 'b', vectorSpan * 2 + vectorSpan / 3, vectorSpan * 2 + vectorSpan / 3, -1 });
+
+                // For each input length from 1/2 byte to 3 1/2 vector spans in 1/2 vector span increments...
+                for (var length = Vector<byte>.Count / 2; length <= Vector<byte>.Count * 3 + Vector<byte>.Count / 2; length += Vector<byte>.Count / 2)
+                {
+                    // ...place the seek char at vector and input boundaries...
+                    for (var i = 0; i < length; i += ((i + 1) % Vector<byte>.Count == 0) ? 1 : Math.Min(i + (Vector<byte>.Count - 1), length - 1))
+                    {
+                        var input = new StringBuilder(new string('a', length));
+                        input.Replace('a', 'b', i, 1);
+
+                        // ...and check with a seek byte limit before, at, and past the seek char position...
+                        for (var limitOffset = -1; limitOffset <= 1; limitOffset++)
+                        {
+                            var limit = (i + 1) + limitOffset;
+
+                            if (limit >= i + 1)
+                            {
+                                // ...that Seek() succeeds when the seek char is within that limit
+                                data.Add(new object[] { input.ToString(), 'b', limit, i + 1, 'b' });
+                            }
+                            else
+                            {
+                                // ...or fails when it's not
+                                data.Add(new object[] { input.ToString(), 'b', limit, limit + 1, -1 });
+                            }
+                        }
+                    }
+                }
+
+                return data;
+            }
+        }
+
     }
 }
