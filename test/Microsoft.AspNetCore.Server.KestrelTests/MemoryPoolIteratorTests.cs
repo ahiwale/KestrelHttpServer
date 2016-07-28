@@ -415,7 +415,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [MemberData(nameof(SeekByteLimitData))]
         public void TestSeekByteLimitWithinSameBlock(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
         {
+            // Arrange
             var seekVector = new Vector<byte>((byte)seek);
+
             var block = _pool.Lease();
             var chars = input.ToString().ToCharArray().Select(c => (byte)c).ToArray();
             Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
@@ -429,6 +431,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             // Assert
             Assert.Equal(expectedBytesScanned, bytesScanned);
             Assert.Equal(expectedReturnValue, returnValue);
+
             Assert.Same(block, scan.Block);
             var expectedEndIndex = expectedReturnValue != -1 ?
                 block.Start + input.IndexOf(seek) :
@@ -471,6 +474,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             // Assert
             Assert.Equal(expectedBytesScanned, bytesScanned);
             Assert.Equal(expectedReturnValue, returnValue);
+
             var seekCharIndex = input.IndexOf(seek);
             var expectedEndBlock = limit < input.Length / 2 ?
                 block1 :
@@ -516,6 +520,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(expectedReturnValue, returnValue1);
             Assert.Equal(expectedReturnValue, returnValue2);
             Assert.Equal(expectedReturnValue, returnValue3);
+
             Assert.Same(block, scan1.Block);
             Assert.Same(block, scan2.Block);
             Assert.Same(block, scan3.Block);
@@ -584,6 +589,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(expectedReturnValue, returnValue1);
             Assert.Equal(expectedReturnValue, returnValue2);
             Assert.Equal(expectedReturnValue, returnValue3);
+
             var seekCharIndex = input.IndexOf(seek);
             var limitAtIndex = input.IndexOf(limitAt);
             var expectedEndBlock = seekCharIndex != -1 && seekCharIndex < input.Length / 2 ?

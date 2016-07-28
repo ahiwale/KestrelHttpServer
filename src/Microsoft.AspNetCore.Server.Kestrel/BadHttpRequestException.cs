@@ -79,6 +79,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 case RequestRejectionReason.NonAsciiOrNullCharactersInInputString:
                     ex = new BadHttpRequestException("The input string contains non-ASCII or null characters.");
                     break;
+                case RequestRejectionReason.RequestLineTooLong:
+                    ex = new BadHttpRequestException("Request line too long.");
+                    break;
+                case RequestRejectionReason.MissingSpaceAfterMethod:
+                    ex = new BadHttpRequestException("No space character found after method in request line.");
+                    break;
+                case RequestRejectionReason.MissingSpaceAfterTarget:
+                    ex = new BadHttpRequestException("No space character found after target in request line.");
+                    break;
+                case RequestRejectionReason.MissingCrAfterVersion:
+                    ex = new BadHttpRequestException("Missing CR in request line.");
+                    break;
                 default:
                     ex = new BadHttpRequestException("Bad request.");
                     break;
