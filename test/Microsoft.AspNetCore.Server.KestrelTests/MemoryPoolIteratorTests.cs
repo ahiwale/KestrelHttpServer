@@ -412,47 +412,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("hello, world", 'h', 12, 1, 'h')]
-        [InlineData("hello, world", ' ', 12, 7, ' ')]
-        [InlineData("hello, world", 'd', 12, 12, 'd')]
-        [InlineData("hello, world", '!', 12, 12, -1)]
-        [InlineData("hello, world", 'h', 13, 1, 'h')]
-        [InlineData("hello, world", ' ', 13, 7, ' ')]
-        [InlineData("hello, world", 'd', 13, 12, 'd')]
-        [InlineData("hello, world", '!', 13, 12, -1)]
-        [InlineData("hello, world", 'h', 5, 1, 'h')]
-        [InlineData("hello, world", 'o', 5, 5, 'o')]
-        [InlineData("hello, world", ',', 5, 6, -1)]
-        [InlineData("hello, world", 'd', 5, 6, -1)]
-        [InlineData("abba", 'a', 4, 1, 'a')]
-        [InlineData("abba", 'b', 4, 2, 'b')]
+        [MemberData(nameof(SeekByteLimitData))]
         public void TestSeekByteLimitWithinSameBlock(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
         {
-            // Arrange
             var seekVector = new Vector<byte>((byte)seek);
-            var block = _pool.Lease();
-            var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
-            Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
-            block.End += chars.Length;
-            var scan = block.GetIterator();
-
-            // Act
-            int bytesScanned;
-            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
-
-            // Assert
-            Assert.Equal(expectedBytesScanned, bytesScanned);
-            Assert.Equal(expectedReturnValue, returnValue);
-
-            // Cleanup
-            _pool.Return(block);
-        }
-
-        [Theory]
-        [MemberData(nameof(SeekByteLimitVectorData))]
-        public void TestSeekByteLimitWithinSameBlock_VectorPath(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
-        {
-            var seekVector = new Vector<byte>((byte)'b');
             var block = _pool.Lease();
             var chars = input.ToString().ToCharArray().Select(c => (byte)c).ToArray();
             Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
@@ -472,20 +435,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("hello, world", 'h', 12, 1, 'h')]
-        [InlineData("hello, world", ' ', 12, 7, ' ')]
-        [InlineData("hello, world", 'd', 12, 12, 'd')]
-        [InlineData("hello, world", '!', 12, 12, -1)]
-        [InlineData("hello, world", 'h', 13, 1, 'h')]
-        [InlineData("hello, world", ' ', 13, 7, ' ')]
-        [InlineData("hello, world", 'd', 13, 12, 'd')]
-        [InlineData("hello, world", '!', 13, 12, -1)]
-        [InlineData("hello, world", 'h', 5, 1, 'h')]
-        [InlineData("hello, world", 'o', 5, 5, 'o')]
-        [InlineData("hello, world", ',', 5, 6, -1)]
-        [InlineData("hello, world", 'd', 5, 6, -1)]
-        [InlineData("abba", 'a', 4, 1, 'a')]
-        [InlineData("abba", 'b', 4, 2, 'b')]
+        [MemberData(nameof(SeekByteLimitData))]
         public void TestSeekByteLimitAcrossBlocks(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
         {
             // Arrange
@@ -520,20 +470,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("hello, world", 'h', 12, 1, 'h')]
-        [InlineData("hello, world", ' ', 12, 7, ' ')]
-        [InlineData("hello, world", 'd', 12, 12, 'd')]
-        [InlineData("hello, world", '!', 12, 12, -1)]
-        [InlineData("hello, world", 'h', 13, 1, 'h')]
-        [InlineData("hello, world", ' ', 13, 7, ' ')]
-        [InlineData("hello, world", 'd', 13, 12, 'd')]
-        [InlineData("hello, world", '!', 13, 12, -1)]
-        [InlineData("hello, world", 'h', 5, 1, 'h')]
-        [InlineData("hello, world", 'o', 5, 5, 'o')]
-        [InlineData("hello, world", ',', 5, 6, -1)]
-        [InlineData("hello, world", 'd', 5, 6, -1)]
-        [InlineData("abba", 'a', 4, 1, 'a')]
-        [InlineData("abba", 'b', 4, 2, 'b')]
+        [MemberData(nameof(SeekByteLimitData))]
         public void TestSeekByteLimitAcrossEmptyBlocks(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
         {
             // Arrange
@@ -726,7 +663,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Same(knownString1, knownString2);
         }
 
-        public static IEnumerable<object[]> SeekByteLimitVectorData
+        public static IEnumerable<object[]> SeekByteLimitData
         {
             get
             {
@@ -734,6 +671,25 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 // string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue
                 var data = new List<object[]>();
+
+                // Non-vector inputs
+
+                data.Add(new object[] { "hello, world", 'h', 12, 1, 'h' });
+                data.Add(new object[] { "hello, world", ' ', 12, 7, ' ' });
+                data.Add(new object[] { "hello, world", 'd', 12, 12, 'd' });
+                data.Add(new object[] { "hello, world", '!', 12, 12, -1 });
+                data.Add(new object[] { "hello, world", 'h', 13, 1, 'h' });
+                data.Add(new object[] { "hello, world", ' ', 13, 7, ' ' });
+                data.Add(new object[] { "hello, world", 'd', 13, 12, 'd' });
+                data.Add(new object[] { "hello, world", '!', 13, 12, -1 });
+                data.Add(new object[] { "hello, world", 'h', 5, 1, 'h' });
+                data.Add(new object[] { "hello, world", 'o', 5, 5, 'o' });
+                data.Add(new object[] { "hello, world", ',', 5, 6, -1 });
+                data.Add(new object[] { "hello, world", 'd', 5, 6, -1 });
+                data.Add(new object[] { "abba", 'a', 4, 1, 'a' });
+                data.Add(new object[] { "abba", 'b', 4, 2, 'b' });
+
+                // Vector inputs
 
                 // Single vector, no seek char in input, expect failure
                 data.Add(new object[] { new string('a', vectorSpan), 'b', vectorSpan, vectorSpan, -1 });
@@ -743,10 +699,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 data.Add(new object[] { new string('a', vectorSpan * 2 + vectorSpan / 3), 'b', vectorSpan * 2 + vectorSpan / 3, vectorSpan * 2 + vectorSpan / 3, -1 });
 
                 // For each input length from 1/2 byte to 3 1/2 vector spans in 1/2 vector span increments...
-                for (var length = Vector<byte>.Count / 2; length <= Vector<byte>.Count * 3 + Vector<byte>.Count / 2; length += Vector<byte>.Count / 2)
+                for (var length = vectorSpan / 2; length <= vectorSpan * 3 + vectorSpan / 2; length += vectorSpan / 2)
                 {
                     // ...place the seek char at vector and input boundaries...
-                    for (var i = 0; i < length; i += ((i + 1) % Vector<byte>.Count == 0) ? 1 : Math.Min(i + (Vector<byte>.Count - 1), length - 1))
+                    for (var i = 0; i < length; i += ((i + 1) % vectorSpan == 0) ? 1 : Math.Min(i + (vectorSpan - 1), length - 1))
                     {
                         var input = new StringBuilder(new string('a', length));
                         input.Replace('a', 'b', i, 1);
