@@ -429,6 +429,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             // Assert
             Assert.Equal(expectedBytesScanned, bytesScanned);
             Assert.Equal(expectedReturnValue, returnValue);
+            Assert.Same(block, scan.Block);
+            var expectedEndIndex = expectedReturnValue != -1 ?
+                block.Start + input.IndexOf(seek) :
+                block.Start + expectedBytesScanned - (limit < input.Length ? 1 : 0);
+            Assert.Equal(expectedEndIndex, scan.Index);
 
             // Cleanup
             _pool.Return(block);
@@ -463,6 +468,15 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             // Assert
             Assert.Equal(expectedBytesScanned, bytesScanned);
             Assert.Equal(expectedReturnValue, returnValue);
+            var seekCharIndex = input.IndexOf(seek);
+            var expectedEndBlock = limit < input.Length / 2 ?
+                block1 :
+                (seekCharIndex != -1 && seekCharIndex < input.Length / 2 ? block1 : block2);
+            Assert.Same(expectedEndBlock, scan.Block);
+            var expectedEndIndex = expectedReturnValue != -1 ?
+                expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek)) :
+                expectedEndBlock.Start + (expectedEndBlock == block1 ? expectedBytesScanned : expectedBytesScanned - (input.Length / 2)) - (limit < input.Length ? 1 : 0);
+            Assert.Equal(expectedEndIndex, scan.Index);
 
             // Cleanup
             _pool.Return(block1);
@@ -501,6 +515,15 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             // Assert
             Assert.Equal(expectedBytesScanned, bytesScanned);
             Assert.Equal(expectedReturnValue, returnValue);
+            var seekCharIndex = input.IndexOf(seek);
+            var expectedEndBlock = limit < input.Length / 2 ?
+                block1 :
+                (seekCharIndex != -1 && seekCharIndex < input.Length / 2 ? block1 : block2);
+            Assert.Same(expectedEndBlock, scan.Block);
+            var expectedEndIndex = expectedReturnValue != -1 ?
+                expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek)) :
+                expectedEndBlock.Start + (expectedEndBlock == block1 ? expectedBytesScanned : expectedBytesScanned - (input.Length / 2)) - (limit < input.Length ? 1 : 0);
+            Assert.Equal(expectedEndIndex, scan.Index);
 
             // Cleanup
             _pool.Return(block1);
@@ -537,6 +560,28 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(expectedReturnValue, returnValue1);
             Assert.Equal(expectedReturnValue, returnValue2);
             Assert.Equal(expectedReturnValue, returnValue3);
+            Assert.Same(block, scan1.Block);
+            Assert.Same(block, scan2.Block);
+            Assert.Same(block, scan3.Block);
+            if (expectedReturnValue != -1)
+            {
+                var expectedEndIndex = block.Start + input.IndexOf(seek);
+                Assert.Equal(expectedEndIndex, scan1.Index);
+                Assert.Equal(expectedEndIndex, scan2.Index);
+                Assert.Equal(expectedEndIndex, scan3.Index);
+            }
+            else if (!end.IsEnd)
+            {
+                Assert.True(scan1.Index > end.Index);
+                Assert.True(scan2.Index > end.Index);
+                Assert.True(scan3.Index > end.Index);
+            }
+            else
+            {
+                Assert.True(scan1.Index == end.Index);
+                Assert.True(scan2.Index == end.Index);
+                Assert.True(scan3.Index == end.Index);
+            }
 
             // Cleanup
             _pool.Return(block);
@@ -580,6 +625,33 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(expectedReturnValue, returnValue1);
             Assert.Equal(expectedReturnValue, returnValue2);
             Assert.Equal(expectedReturnValue, returnValue3);
+            var seekCharIndex = input.IndexOf(seek);
+            var limitAtIndex = input.IndexOf(limitAt);
+            var expectedEndBlock = seekCharIndex != -1 && seekCharIndex < input.Length / 2 ?
+                block1 :
+                (limitAtIndex != -1 && limitAtIndex < input.Length / 2 ? block1 : block2);
+            Assert.Same(expectedEndBlock, scan1.Block);
+            Assert.Same(expectedEndBlock, scan2.Block);
+            Assert.Same(expectedEndBlock, scan3.Block);
+            if (expectedReturnValue != -1)
+            {
+                var expectedEndIndex = expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek));
+                Assert.Equal(expectedEndIndex, scan1.Index);
+                Assert.Equal(expectedEndIndex, scan2.Index);
+                Assert.Equal(expectedEndIndex, scan3.Index);
+            }
+            else if (!end.IsEnd)
+            {
+                Assert.True(scan1.Index > end.Index);
+                Assert.True(scan2.Index > end.Index);
+                Assert.True(scan3.Index > end.Index);
+            }
+            else
+            {
+                Assert.True(scan1.Index == end.Index);
+                Assert.True(scan2.Index == end.Index);
+                Assert.True(scan3.Index == end.Index);
+            }
 
             // Cleanup
             _pool.Return(block1);
@@ -627,6 +699,33 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(expectedReturnValue, returnValue1);
             Assert.Equal(expectedReturnValue, returnValue2);
             Assert.Equal(expectedReturnValue, returnValue3);
+            var seekCharIndex = input.IndexOf(seek);
+            var limitAtIndex = input.IndexOf(limitAt);
+            var expectedEndBlock = seekCharIndex != -1 && seekCharIndex < input.Length / 2 ?
+                block1 :
+                (limitAtIndex != -1 && limitAtIndex < input.Length / 2 ? block1 : block2);
+            Assert.Same(expectedEndBlock, scan1.Block);
+            Assert.Same(expectedEndBlock, scan2.Block);
+            Assert.Same(expectedEndBlock, scan3.Block);
+            if (expectedReturnValue != -1)
+            {
+                var expectedEndIndex = expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek));
+                Assert.Equal(expectedEndIndex, scan1.Index);
+                Assert.Equal(expectedEndIndex, scan2.Index);
+                Assert.Equal(expectedEndIndex, scan3.Index);
+            }
+            else if (!end.IsEnd)
+            {
+                Assert.True(scan1.Index > end.Index);
+                Assert.True(scan2.Index > end.Index);
+                Assert.True(scan3.Index > end.Index);
+            }
+            else
+            {
+                Assert.True(scan1.Index == end.Index);
+                Assert.True(scan2.Index == end.Index);
+                Assert.True(scan3.Index == end.Index);
+            }
 
             // Cleanup
             _pool.Return(block1);
