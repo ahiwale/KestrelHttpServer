@@ -720,7 +720,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                             }
                             else
                             {
-                                // ...or fails when it's not.
+                                // ...and fails when it's not.
                                 data.Add(new object[] { input.ToString(), 'b', limit, limit + 1, -1 });
                             }
                         }
@@ -773,11 +773,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         if (i > 0) input[i - 1] = 'A';
                         if (i < length - 1) input[i + 1] = 'B';
 
-                        // ...and check with a seek iterator limit before, at, and past the seek char position that Seek() succeeds when the seek char is within that limit...
+                        // ...and check that Seek() succeeds with a limit iterator at or past the seek char position...
                         data.Add(new object[] { input.ToString(), 'b', 'b', 'b' });
                         if (i < length - 1) data.Add(new object[] { input.ToString(), 'b', 'B', 'b' });
 
-                        // ...or fails when it's not.
+                        // ...and fails with a limit iterator before the seek char position.
                         if (i > 0) data.Add(new object[] { input.ToString(), 'b', 'A', -1 });
                     }
                 }
