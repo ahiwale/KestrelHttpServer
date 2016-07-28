@@ -452,50 +452,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Buffer.BlockCopy(chars1, 0, block1.Array, block1.Start, chars1.Length);
             block1.End += chars1.Length;
 
-            var input2 = input.Substring(input.Length / 2);
-            var block2 = _pool.Lease();
-            var chars2 = input2.ToCharArray().Select(c => (byte)c).ToArray();
-            Buffer.BlockCopy(chars2, 0, block2.Array, block2.Start, chars2.Length);
-            block2.End += chars2.Length;
-            block1.Next = block2;
-
-            var scan = block1.GetIterator();
-
-            // Act
-            int bytesScanned;
-            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
-
-            // Assert
-            Assert.Equal(expectedBytesScanned, bytesScanned);
-            Assert.Equal(expectedReturnValue, returnValue);
-            var seekCharIndex = input.IndexOf(seek);
-            var expectedEndBlock = limit < input.Length / 2 ?
-                block1 :
-                (seekCharIndex != -1 && seekCharIndex < input.Length / 2 ? block1 : block2);
-            Assert.Same(expectedEndBlock, scan.Block);
-            var expectedEndIndex = expectedReturnValue != -1 ?
-                expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek)) :
-                expectedEndBlock.Start + (expectedEndBlock == block1 ? expectedBytesScanned : expectedBytesScanned - (input.Length / 2)) - (limit < input.Length ? 1 : 0);
-            Assert.Equal(expectedEndIndex, scan.Index);
-
-            // Cleanup
-            _pool.Return(block1);
-            _pool.Return(block2);
-        }
-
-        [Theory]
-        [MemberData(nameof(SeekByteLimitData))]
-        public void TestSeekByteLimitAcrossEmptyBlocks(string input, char seek, int limit, int expectedBytesScanned, int expectedReturnValue)
-        {
-            // Arrange
-            var seekVector = new Vector<byte>((byte)seek);
-
-            var input1 = input.Substring(0, input.Length / 2);
-            var block1 = _pool.Lease();
-            var chars1 = input1.ToCharArray().Select(c => (byte)c).ToArray();
-            Buffer.BlockCopy(chars1, 0, block1.Array, block1.Start, chars1.Length);
-            block1.End += chars1.Length;
-
             var emptyBlock = _pool.Lease();
             block1.Next = emptyBlock;
 
@@ -590,77 +546,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Theory]
         [MemberData(nameof(SeekIteratorLimitData))]
         public void TestSeekIteratorLimitAcrossBlocks(string input, char seek, char limitAt, int expectedReturnValue)
-        {
-            // Arrange
-            var seekVector = new Vector<byte>((byte)seek);
-            var limitAtVector = new Vector<byte>((byte)limitAt);
-            var afterSeekVector = new Vector<byte>((byte)'B');
-
-            var input1 = input.Substring(0, input.Length / 2);
-            var block1 = _pool.Lease();
-            var chars1 = input1.ToCharArray().Select(c => (byte)c).ToArray();
-            Buffer.BlockCopy(chars1, 0, block1.Array, block1.Start, chars1.Length);
-            block1.End += chars1.Length;
-
-            var input2 = input.Substring(input.Length / 2);
-            var block2 = _pool.Lease();
-            var chars2 = input2.ToCharArray().Select(c => (byte)c).ToArray();
-            Buffer.BlockCopy(chars2, 0, block2.Array, block2.Start, chars2.Length);
-            block2.End += chars2.Length;
-            block1.Next = block2;
-
-            var scan1 = block1.GetIterator();
-            var scan2 = scan1;
-            var scan3 = scan1;
-            var end = scan1;
-
-            // Act
-            var endReturnValue = end.Seek(ref limitAtVector);
-            var returnValue1 = scan1.Seek(ref seekVector, end);
-            var returnValue2 = scan2.Seek(ref afterSeekVector, ref seekVector, end);
-            var returnValue3 = scan3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
-
-            // Assert
-            Assert.Equal(input.Contains(limitAt) ? limitAt : -1, endReturnValue);
-            Assert.Equal(expectedReturnValue, returnValue1);
-            Assert.Equal(expectedReturnValue, returnValue2);
-            Assert.Equal(expectedReturnValue, returnValue3);
-            var seekCharIndex = input.IndexOf(seek);
-            var limitAtIndex = input.IndexOf(limitAt);
-            var expectedEndBlock = seekCharIndex != -1 && seekCharIndex < input.Length / 2 ?
-                block1 :
-                (limitAtIndex != -1 && limitAtIndex < input.Length / 2 ? block1 : block2);
-            Assert.Same(expectedEndBlock, scan1.Block);
-            Assert.Same(expectedEndBlock, scan2.Block);
-            Assert.Same(expectedEndBlock, scan3.Block);
-            if (expectedReturnValue != -1)
-            {
-                var expectedEndIndex = expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek));
-                Assert.Equal(expectedEndIndex, scan1.Index);
-                Assert.Equal(expectedEndIndex, scan2.Index);
-                Assert.Equal(expectedEndIndex, scan3.Index);
-            }
-            else if (!end.IsEnd)
-            {
-                Assert.True(scan1.Index > end.Index);
-                Assert.True(scan2.Index > end.Index);
-                Assert.True(scan3.Index > end.Index);
-            }
-            else
-            {
-                Assert.True(scan1.Index == end.Index);
-                Assert.True(scan2.Index == end.Index);
-                Assert.True(scan3.Index == end.Index);
-            }
-
-            // Cleanup
-            _pool.Return(block1);
-            _pool.Return(block2);
-        }
-
-        [Theory]
-        [MemberData(nameof(SeekIteratorLimitData))]
-        public void TestSeekIteratorLimitAcrossEmptyBlocks(string input, char seek, char limitAt, int expectedReturnValue)
         {
             // Arrange
             var seekVector = new Vector<byte>((byte)seek);
