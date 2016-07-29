@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private long? _maxRequestBufferSize = 1024 * 1024;
 
         // Matches the default large_client_header_buffers in nginx.
-        private int? _maxRequestLineSize = 8 * 1024;
+        private int _maxRequestLineSize = 8 * 1024;
 
         /// <summary>
         /// Gets or sets whether the <c>Server</c> header should be included in each response.
@@ -70,10 +70,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         /// Gets or sets the maximum allowed size for the HTTP request line.
         /// </summary>
         /// <remarks>
-        /// When set to null, no maximum request line size is enforced.
         /// Defaults to 8,192 bytes (8 KB).
         /// </remarks>
-        public int? MaxRequestLineSize
+        public int MaxRequestLineSize
         {
             get
             {
@@ -81,9 +80,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
             set
             {
-                if (value.HasValue && value <= 0)
+                if (value <= 0)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(value), "Value must be null or a positive integer.");
+                    throw new ArgumentOutOfRangeException(nameof(value), "Value must be a positive integer.");
                 }
                 _maxRequestLineSize = value;
             }

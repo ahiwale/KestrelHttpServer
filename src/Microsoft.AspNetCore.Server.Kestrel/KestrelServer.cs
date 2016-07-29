@@ -56,6 +56,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Start<TContext>(IHttpApplication<TContext> application)
         {
+            ValidateOptions();
+
             if (_disposables != null)
             {
                 // The server has already started and/or has not been cleaned up yet
@@ -194,6 +196,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     _disposables.Pop().Dispose();
                 }
                 _disposables = null;
+            }
+        }
+
+        private void ValidateOptions()
+        {
+            if (Options.MaxRequestBufferSize.HasValue && Options.MaxRequestBufferSize < Options.MaxRequestLineSize)
+            {
+                throw new InvalidOperationException("Maximum request buffer size must be greater than or equal to maximum request line size.");
             }
         }
     }

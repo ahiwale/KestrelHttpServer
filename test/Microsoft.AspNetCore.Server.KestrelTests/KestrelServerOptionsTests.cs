@@ -39,6 +39,34 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Fact]
+        public void MaxRequestLineSizeDefault()
+        {
+            Assert.Equal(8 * 1024, (new KestrelServerOptions()).MaxRequestLineSize);
+        }
+
+        [Theory]
+        [InlineData(int.MinValue)]
+        [InlineData(-1)]
+        [InlineData(0)]
+        public void MaxRequestLineSizeInvalid(int value)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                (new KestrelServerOptions()).MaxRequestLineSize = value;
+            });
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(int.MaxValue)]
+        public void MaxRequestLineSizeValid(int value)
+        {
+            var o = new KestrelServerOptions();
+            o.MaxRequestLineSize = value;
+            Assert.Equal(value, o.MaxRequestLineSize);
+        }
+
+        [Fact]
         public void SetThreadCountUsingProcessorCount()
         {
             // Ideally we'd mock Environment.ProcessorCount to test edge cases.

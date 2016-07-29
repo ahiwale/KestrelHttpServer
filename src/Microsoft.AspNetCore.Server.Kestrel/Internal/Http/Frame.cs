@@ -804,23 +804,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var end = scan;
                 int bytesScanned;
-                if (ServerOptions.MaxRequestLineSize.HasValue)
+                if (end.Seek(ref _vectorLFs, ServerOptions.MaxRequestLineSize, out bytesScanned) == -1)
                 {
-                    if (end.Seek(ref _vectorLFs, ServerOptions.MaxRequestLineSize.Value, out bytesScanned) == -1)
+                    if (bytesScanned > ServerOptions.MaxRequestLineSize)
                     {
-                        if (bytesScanned > ServerOptions.MaxRequestLineSize.Value)
-                        {
-                            RejectRequest(RequestRejectionReason.RequestLineTooLong);
-                        }
-                        else
-                        {
-                            return RequestLineStatus.Incomplete;
-                        }
+                        RejectRequest(RequestRejectionReason.RequestLineTooLong);
                     }
-                }
-                else
-                {
-                    if (end.Seek(ref _vectorLFs) == -1)
+                    else
                     {
                         return RequestLineStatus.Incomplete;
                     }
