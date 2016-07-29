@@ -263,7 +263,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 while (following == 0)
                 {
                     if ((bytesScanned > limitBytes) ||
-                        (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index) ||
+                        (block == limitIterator.Block && index > limitIterator.Index) ||
                         wasLastBlock)
                     {
                         _block = block;
@@ -296,7 +296,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                 bytesScanned += _vectorSpan;
 
                                 if ((bytesScanned > limitBytes) ||
-                                    (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index))
+                                    (block == limitIterator.Block && index > limitIterator.Index))
                                 {
                                     _block = block;
                                     _index = index;
@@ -312,7 +312,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             bytesScanned += firstEqualByteIndex + 1;
 
                             if ((bytesScanned > limitBytes) ||
-                                (!limitIterator.IsDefault && _block == limitIterator.Block && _index > limitIterator.Index))
+                                (_block == limitIterator.Block && _index > limitIterator.Index))
                             {
                                 return -1;
                             }
@@ -331,7 +331,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                         bytesScanned++;
 
                         if ((bytesScanned > limitBytes) ||
-                            (!limitIterator.IsDefault && block == limitIterator.Block && index > limitIterator.Index))
+                            (block == limitIterator.Block && index > limitIterator.Index))
                         {
                             _block = block;
                             _index = index;
@@ -378,7 +378,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 while (following == 0)
                 {
-                    if ((!limit.IsDefault && block == limit.Block && index > limit.Index) ||
+                    if ((block == limit.Block && index > limit.Index) ||
                         wasLastBlock)
                     {
                         _block = block;
@@ -420,7 +420,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                 following -= _vectorSpan;
                                 index += _vectorSpan;
 
-                                if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                                if (block == limit.Block && index > limit.Index)
                                 {
                                     _block = block;
                                     _index = index;
@@ -436,7 +436,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                             {
                                 _index = index + byte0Index;
 
-                                if (!limit.IsDefault && block == limit.Block && _index > limit.Index)
+                                if (block == limit.Block && _index > limit.Index)
                                 {
                                     return -1;
                                 }
@@ -446,7 +446,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             _index = index + byte1Index;
 
-                            if (!limit.IsDefault && block == limit.Block && _index > limit.Index)
+                            if (block == limit.Block && _index > limit.Index)
                             {
                                 return -1;
                             }
@@ -461,7 +461,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     var pEnd = pCurrent + following;
                     do
                     {
-                        if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                        if (block == limit.Block && index > limit.Index)
                         {
                             _block = block;
                             _index = index;
@@ -517,7 +517,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 while (following == 0)
                 {
-                    if ((!limit.IsDefault && block == limit.Block && index > limit.Index) ||
+                    if ((block == limit.Block && index > limit.Index) ||
                         wasLastBlock)
                     {
                         _block = block;
@@ -563,7 +563,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                 following -= _vectorSpan;
                                 index += _vectorSpan;
 
-                                if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                                if (block == limit.Block && index > limit.Index)
                                 {
                                     _block = block;
                                     _index = index;
@@ -605,7 +605,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             _index = index + toMove;
 
-                            if (!limit.IsDefault && block == limit.Block && _index > limit.Index)
+                            if (block == limit.Block && _index > limit.Index)
                             {
                                 return -1;
                             }
@@ -620,7 +620,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     var pEnd = pCurrent + following;
                     do
                     {
-                        if (!limit.IsDefault && block == limit.Block && index > limit.Index)
+                        if (block == limit.Block && index > limit.Index)
                         {
                             _block = block;
                             _index = index;
