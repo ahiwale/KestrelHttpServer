@@ -426,7 +426,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             // Act
             int bytesScanned;
-            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
+            var returnValue = scan.Seek(ref seekVector, out bytesScanned, limit);
 
             // Assert
             Assert.Equal(expectedBytesScanned, bytesScanned);
@@ -435,7 +435,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Same(block, scan.Block);
             var expectedEndIndex = expectedReturnValue != -1 ?
                 block.Start + input.IndexOf(seek) :
-                block.Start + expectedBytesScanned - (limit < input.Length ? 1 : 0);
+                block.Start + expectedBytesScanned;
             Assert.Equal(expectedEndIndex, scan.Index);
 
             // Cleanup
@@ -469,20 +469,20 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             // Act
             int bytesScanned;
-            var returnValue = scan.Seek(ref seekVector, limit, out bytesScanned);
+            var returnValue = scan.Seek(ref seekVector, out bytesScanned, limit);
 
             // Assert
             Assert.Equal(expectedBytesScanned, bytesScanned);
             Assert.Equal(expectedReturnValue, returnValue);
 
             var seekCharIndex = input.IndexOf(seek);
-            var expectedEndBlock = limit < input.Length / 2 ?
+            var expectedEndBlock = limit <= input.Length / 2 ?
                 block1 :
                 (seekCharIndex != -1 && seekCharIndex < input.Length / 2 ? block1 : block2);
             Assert.Same(expectedEndBlock, scan.Block);
             var expectedEndIndex = expectedReturnValue != -1 ?
                 expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek)) :
-                expectedEndBlock.Start + (expectedEndBlock == block1 ? expectedBytesScanned : expectedBytesScanned - (input.Length / 2)) - (limit < input.Length ? 1 : 0);
+                expectedEndBlock.Start + (expectedEndBlock == block1 ? expectedBytesScanned : expectedBytesScanned - (input.Length / 2));
             Assert.Equal(expectedEndIndex, scan.Index);
 
             // Cleanup
@@ -505,44 +505,45 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Buffer.BlockCopy(chars, 0, block.Array, block.Start, chars.Length);
             block.End += chars.Length;
             var scan1 = block.GetIterator();
-            var scan2 = scan1;
-            var scan3 = scan1;
+            var scan2_1 = scan1;
+            var scan2_2 = scan1;
+            var scan3_1 = scan1;
+            var scan3_2 = scan1;
+            var scan3_3 = scan1;
             var end = scan1;
 
             // Act
             var endReturnValue = end.Seek(ref limitAtVector);
             var returnValue1 = scan1.Seek(ref seekVector, end);
-            var returnValue2 = scan2.Seek(ref afterSeekVector, ref seekVector, end);
-            var returnValue3 = scan3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
+            var returnValue2_1 = scan2_1.Seek(ref seekVector, ref afterSeekVector, end);
+            var returnValue2_2 = scan2_2.Seek(ref afterSeekVector, ref seekVector, end);
+            var returnValue3_1 = scan3_1.Seek(ref seekVector, ref afterSeekVector, ref afterSeekVector, end);
+            var returnValue3_2 = scan3_2.Seek(ref afterSeekVector, ref seekVector, ref afterSeekVector, end);
+            var returnValue3_3 = scan3_3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
 
             // Assert
             Assert.Equal(input.Contains(limitAt) ? limitAt : -1, endReturnValue);
             Assert.Equal(expectedReturnValue, returnValue1);
-            Assert.Equal(expectedReturnValue, returnValue2);
-            Assert.Equal(expectedReturnValue, returnValue3);
+            Assert.Equal(expectedReturnValue, returnValue2_1);
+            Assert.Equal(expectedReturnValue, returnValue2_2);
+            Assert.Equal(expectedReturnValue, returnValue3_1);
+            Assert.Equal(expectedReturnValue, returnValue3_2);
+            Assert.Equal(expectedReturnValue, returnValue3_3);
 
             Assert.Same(block, scan1.Block);
-            Assert.Same(block, scan2.Block);
-            Assert.Same(block, scan3.Block);
-            if (expectedReturnValue != -1)
-            {
-                var expectedEndIndex = block.Start + input.IndexOf(seek);
-                Assert.Equal(expectedEndIndex, scan1.Index);
-                Assert.Equal(expectedEndIndex, scan2.Index);
-                Assert.Equal(expectedEndIndex, scan3.Index);
-            }
-            else if (!end.IsEnd)
-            {
-                Assert.True(scan1.Index > end.Index);
-                Assert.True(scan2.Index > end.Index);
-                Assert.True(scan3.Index > end.Index);
-            }
-            else
-            {
-                Assert.True(scan1.Index == end.Index);
-                Assert.True(scan2.Index == end.Index);
-                Assert.True(scan3.Index == end.Index);
-            }
+            Assert.Same(block, scan2_1.Block);
+            Assert.Same(block, scan2_2.Block);
+            Assert.Same(block, scan3_1.Block);
+            Assert.Same(block, scan3_2.Block);
+            Assert.Same(block, scan3_3.Block);
+
+            var expectedEndIndex = expectedReturnValue != -1 ? block.Start + input.IndexOf(seek) : end.Index;
+            Assert.Equal(expectedEndIndex, scan1.Index);
+            Assert.Equal(expectedEndIndex, scan2_1.Index);
+            Assert.Equal(expectedEndIndex, scan2_2.Index);
+            Assert.Equal(expectedEndIndex, scan3_1.Index);
+            Assert.Equal(expectedEndIndex, scan3_2.Index);
+            Assert.Equal(expectedEndIndex, scan3_3.Index);
 
             // Cleanup
             _pool.Return(block);
@@ -574,21 +575,30 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             emptyBlock.Next = block2;
 
             var scan1 = block1.GetIterator();
-            var scan2 = scan1;
-            var scan3 = scan1;
+            var scan2_1 = scan1;
+            var scan2_2 = scan1;
+            var scan3_1 = scan1;
+            var scan3_2 = scan1;
+            var scan3_3 = scan1;
             var end = scan1;
 
             // Act
             var endReturnValue = end.Seek(ref limitAtVector);
             var returnValue1 = scan1.Seek(ref seekVector, end);
-            var returnValue2 = scan2.Seek(ref afterSeekVector, ref seekVector, end);
-            var returnValue3 = scan3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
+            var returnValue2_1 = scan2_1.Seek(ref seekVector, ref afterSeekVector, end);
+            var returnValue2_2 = scan2_2.Seek(ref afterSeekVector, ref seekVector, end);
+            var returnValue3_1 = scan3_1.Seek(ref seekVector, ref afterSeekVector, ref afterSeekVector, end);
+            var returnValue3_2 = scan3_2.Seek(ref afterSeekVector, ref seekVector, ref afterSeekVector, end);
+            var returnValue3_3 = scan3_3.Seek(ref afterSeekVector, ref afterSeekVector, ref seekVector, end);
 
             // Assert
             Assert.Equal(input.Contains(limitAt) ? limitAt : -1, endReturnValue);
             Assert.Equal(expectedReturnValue, returnValue1);
-            Assert.Equal(expectedReturnValue, returnValue2);
-            Assert.Equal(expectedReturnValue, returnValue3);
+            Assert.Equal(expectedReturnValue, returnValue2_1);
+            Assert.Equal(expectedReturnValue, returnValue2_2);
+            Assert.Equal(expectedReturnValue, returnValue3_1);
+            Assert.Equal(expectedReturnValue, returnValue3_2);
+            Assert.Equal(expectedReturnValue, returnValue3_3);
 
             var seekCharIndex = input.IndexOf(seek);
             var limitAtIndex = input.IndexOf(limitAt);
@@ -596,27 +606,21 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 block1 :
                 (limitAtIndex != -1 && limitAtIndex < input.Length / 2 ? block1 : block2);
             Assert.Same(expectedEndBlock, scan1.Block);
-            Assert.Same(expectedEndBlock, scan2.Block);
-            Assert.Same(expectedEndBlock, scan3.Block);
-            if (expectedReturnValue != -1)
-            {
-                var expectedEndIndex = expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek));
-                Assert.Equal(expectedEndIndex, scan1.Index);
-                Assert.Equal(expectedEndIndex, scan2.Index);
-                Assert.Equal(expectedEndIndex, scan3.Index);
-            }
-            else if (!end.IsEnd)
-            {
-                Assert.True(scan1.Index > end.Index);
-                Assert.True(scan2.Index > end.Index);
-                Assert.True(scan3.Index > end.Index);
-            }
-            else
-            {
-                Assert.True(scan1.Index == end.Index);
-                Assert.True(scan2.Index == end.Index);
-                Assert.True(scan3.Index == end.Index);
-            }
+            Assert.Same(expectedEndBlock, scan2_1.Block);
+            Assert.Same(expectedEndBlock, scan2_2.Block);
+            Assert.Same(expectedEndBlock, scan3_1.Block);
+            Assert.Same(expectedEndBlock, scan3_2.Block);
+            Assert.Same(expectedEndBlock, scan3_3.Block);
+
+            var expectedEndIndex = expectedReturnValue != -1 ?
+                expectedEndBlock.Start + (expectedEndBlock == block1 ? input1.IndexOf(seek) : input2.IndexOf(seek)) :
+                end.Index;
+            Assert.Equal(expectedEndIndex, scan1.Index);
+            Assert.Equal(expectedEndIndex, scan2_1.Index);
+            Assert.Equal(expectedEndIndex, scan2_2.Index);
+            Assert.Equal(expectedEndIndex, scan3_1.Index);
+            Assert.Equal(expectedEndIndex, scan3_2.Index);
+            Assert.Equal(expectedEndIndex, scan3_3.Index);
 
             // Cleanup
             _pool.Return(block1);
@@ -675,8 +679,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 data.Add(new object[] { "hello, world", '!', 13, 12, -1 });
                 data.Add(new object[] { "hello, world", 'h', 5, 1, 'h' });
                 data.Add(new object[] { "hello, world", 'o', 5, 5, 'o' });
-                data.Add(new object[] { "hello, world", ',', 5, 6, -1 });
-                data.Add(new object[] { "hello, world", 'd', 5, 6, -1 });
+                data.Add(new object[] { "hello, world", ',', 5, 5, -1 });
+                data.Add(new object[] { "hello, world", 'd', 5, 5, -1 });
                 data.Add(new object[] { "abba", 'a', 4, 1, 'a' });
                 data.Add(new object[] { "abba", 'b', 4, 2, 'b' });
 
@@ -689,11 +693,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Two vectors plus non vector length (thus hitting slow path too), no seek char in input, expect failure
                 data.Add(new object[] { new string('a', vectorSpan * 2 + vectorSpan / 2), 'b', vectorSpan * 2 + vectorSpan / 2, vectorSpan * 2 + vectorSpan / 2, -1 });
 
-                // For each input length from 1/2 byte to 3 1/2 vector spans in 1/2 vector span increments...
+                // For each input length from 1/2 to 3 1/2 vector spans in 1/2 vector span increments...
                 for (var length = vectorSpan / 2; length <= vectorSpan * 3 + vectorSpan / 2; length += vectorSpan / 2)
                 {
                     // ...place the seek char at vector and input boundaries...
-                    for (var i = 0; i < length; i += ((i + 1) % vectorSpan == 0) ? 1 : Math.Min(i + (vectorSpan - 1), length - 1))
+                    for (var i = Math.Min(vectorSpan - 1, length - 1); i < length; i += ((i + 1) % vectorSpan == 0) ? 1 : Math.Min(i + (vectorSpan - 1), length - 1))
                     {
                         var input = new StringBuilder(new string('a', length));
                         input[i] = 'b';
@@ -711,7 +715,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                             else
                             {
                                 // ...and fails when it's not.
-                                data.Add(new object[] { input.ToString(), 'b', limit, limit + 1, -1 });
+                                data.Add(new object[] { input.ToString(), 'b', limit, Math.Min(length, limit), -1 });
                             }
                         }
                     }
@@ -750,17 +754,17 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 // Two vectors plus non vector length (thus hitting slow path too), no seek char in input, expect failure
                 data.Add(new object[] { new string('a', vectorSpan * 2 + vectorSpan / 2), 'b', 'b', -1 });
 
-                // For each input length from 1/2 byte to 3 1/2 vector spans in 1/2 vector span increments...
+                // For each input length from 1/2 to 3 1/2 vector spans in 1/2 vector span increments...
                 for (var length = vectorSpan / 2; length <= vectorSpan * 3 + vectorSpan / 2; length += vectorSpan / 2)
                 {
                     // ...place the seek char at vector and input boundaries...
-                    for (var i = 0; i < length; i += ((i + 1) % vectorSpan == 0) ? 1 : Math.Min(i + (vectorSpan - 1), length - 1))
+                    for (var i = Math.Min(vectorSpan - 1, length - 1); i < length; i += ((i + 1) % vectorSpan == 0) ? 1 : Math.Min(i + (vectorSpan - 1), length - 1))
                     {
                         var input = new StringBuilder(new string('a', length));
                         input[i] = 'b';
 
                         // ...along with sentinel characters to seek the limit iterator to...
-                        if (i > 0) input[i - 1] = 'A';
+                        input[i - 1] = 'A';
                         if (i < length - 1) input[i + 1] = 'B';
 
                         // ...and check that Seek() succeeds with a limit iterator at or past the seek char position...
@@ -768,7 +772,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         if (i < length - 1) data.Add(new object[] { input.ToString(), 'b', 'B', 'b' });
 
                         // ...and fails with a limit iterator before the seek char position.
-                        if (i > 0) data.Add(new object[] { input.ToString(), 'b', 'A', -1 });
+                        data.Add(new object[] { input.ToString(), 'b', 'A', -1 });
                     }
                 }
 

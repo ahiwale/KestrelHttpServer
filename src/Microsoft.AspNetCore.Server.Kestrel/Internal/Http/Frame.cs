@@ -804,9 +804,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var end = scan;
                 int bytesScanned;
-                if (end.Seek(ref _vectorLFs, ServerOptions.MaxRequestLineSize, out bytesScanned) == -1)
+                if (end.Seek(ref _vectorLFs, out bytesScanned, ServerOptions.MaxRequestLineSize) == -1)
                 {
-                    if (bytesScanned > ServerOptions.MaxRequestLineSize)
+                    if (bytesScanned >= ServerOptions.MaxRequestLineSize)
                     {
                         RejectRequest(RequestRejectionReason.RequestLineTooLong);
                     }

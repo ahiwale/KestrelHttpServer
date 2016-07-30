@@ -221,34 +221,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return Seek(ref byte0Vector, out bytesScanned);
         }
 
-        public unsafe int Seek(ref Vector<byte> byte0Vector, int limit, out int bytesScanned)
-        {
-            return Seek(ref byte0Vector, out bytesScanned, limitBytes: limit);
-        }
-
-        public unsafe int Seek(ref Vector<byte> byte0Vector, MemoryPoolIterator limit)
-        {
-            int bytesScanned;
-            return Seek(ref byte0Vector, out bytesScanned, limitIterator: limit);
-        }
-
-        private unsafe int Seek(
+        public unsafe int Seek(
             ref Vector<byte> byte0Vector,
             out int bytesScanned,
-            int limitBytes = int.MaxValue,
-            MemoryPoolIterator limitIterator = new MemoryPoolIterator())
+            int limit = int.MaxValue)
         {
             bytesScanned = 0;
 
-            if (IsDefault)
+            if (IsDefault || limit <= 0)
             {
                 return -1;
-            }
-
-            if (limitBytes != int.MaxValue && !limitIterator.IsDefault)
-            {
-                throw new InvalidOperationException(
-                    $"{nameof(limitBytes)} and {nameof(limitIterator)} cannot be set at the same time.");
             }
 
             var block = _block;
@@ -262,12 +244,118 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 while (following == 0)
                 {
-                    if ((bytesScanned > limitBytes) ||
-                        (block == limitIterator.Block && index > limitIterator.Index) ||
-                        wasLastBlock)
+                    if (bytesScanned >= limit || wasLastBlock)
                     {
                         _block = block;
                         _index = index;
+                        return -1;
+                    }
+
+                    block = block.Next;
+                    index = block.Start;
+                    wasLastBlock = block.Next == null;
+                    following = block.End - index;
+                }
+                array = block.Array;
+                while (following > 0)
+                {
+                    // Need unit tests to test Vector path
+#if !DEBUG
+                    // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
+                    if (Vector.IsHardwareAccelerated)
+                    {
+#endif
+                    if (following >= _vectorSpan)
+                    {
+                        var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
+
+                        if (byte0Equals.Equals(Vector<byte>.Zero))
+                        {
+                            if (bytesScanned + _vectorSpan >= limit)
+                            {
+                                _block = block;
+                                // Ensure iterator is left at limit position
+                                _index = index + (limit - bytesScanned);
+                                bytesScanned = limit;
+                                return -1;
+                            }
+
+                            bytesScanned += _vectorSpan;
+                            following -= _vectorSpan;
+                            index += _vectorSpan;
+                            continue;
+                        }
+
+                        _block = block;
+
+                        var firstEqualByteIndex = FindFirstEqualByte(ref byte0Equals);
+                        var vectorBytesScanned = firstEqualByteIndex + 1;
+
+                        if (bytesScanned + vectorBytesScanned > limit)
+                        {
+                            // Ensure iterator is left at limit position
+                            _index = index + (limit - bytesScanned);
+                            bytesScanned = limit;
+                            return -1;
+                        }
+
+                        _index = index + firstEqualByteIndex;
+                        bytesScanned += vectorBytesScanned;
+
+                        return byte0;
+                    }
+                    // Need unit tests to test Vector path
+#if !DEBUG
+                    }
+#endif
+
+                    var pCurrent = (block.DataFixedPtr + index);
+                    var pEnd = pCurrent + Math.Min(following, limit - bytesScanned);
+                    do
+                    {
+                        bytesScanned++;
+                        if (*pCurrent == byte0)
+                        {
+                            _block = block;
+                            _index = index;
+                            return byte0;
+                        }
+                        pCurrent++;
+                        index++;
+                    } while (pCurrent < pEnd);
+
+                    following = 0;
+                    break;
+                }
+            }
+        }
+
+        public unsafe int Seek(
+            ref Vector<byte> byte0Vector,
+            MemoryPoolIterator limit = new MemoryPoolIterator())
+        {
+            if (IsDefault)
+            {
+                return -1;
+            }
+
+            var block = _block;
+            var index = _index;
+            var wasLastBlock = block.Next == null;
+            var following = block.End - index;
+            byte[] array;
+            var byte0 = byte0Vector[0];
+
+            while (true)
+            {
+                while (following == 0)
+                {
+                    if ((block == limit.Block && index > limit.Index) ||
+                        wasLastBlock)
+                    {
+                        _block = block;
+                        // Ensure iterator is left at limit position
+                        _index = limit.Index;
                         return -1;
                     }
 
@@ -291,31 +379,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             if (byte0Equals.Equals(Vector<byte>.Zero))
                             {
-                                following -= _vectorSpan;
-                                index += _vectorSpan;
-                                bytesScanned += _vectorSpan;
-
-                                if ((bytesScanned > limitBytes) ||
-                                    (block == limitIterator.Block && index > limitIterator.Index))
+                                if (block == limit.Block && index + _vectorSpan > limit.Index)
                                 {
                                     _block = block;
-                                    _index = index;
+                                    // Ensure iterator is left at limit position
+                                    _index = limit.Index;
                                     return -1;
                                 }
 
+                                following -= _vectorSpan;
+                                index += _vectorSpan;
                                 continue;
                             }
 
-                            var firstEqualByteIndex = FindFirstEqualByte(ref byte0Equals);
                             _block = block;
-                            _index = index + firstEqualByteIndex;
-                            bytesScanned += firstEqualByteIndex + 1;
 
-                            if ((bytesScanned > limitBytes) ||
-                                (_block == limitIterator.Block && _index > limitIterator.Index))
+                            var firstEqualByteIndex = FindFirstEqualByte(ref byte0Equals);
+                            var vectorBytesScanned = firstEqualByteIndex + 1;
+
+                            if (_block == limit.Block && index + firstEqualByteIndex > limit.Index)
                             {
+                                // Ensure iterator is left at limit position
+                                _index = limit.Index;
                                 return -1;
                             }
+
+                            _index = index + firstEqualByteIndex;
 
                             return byte0;
                         }
@@ -325,19 +414,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 #endif
 
                     var pCurrent = (block.DataFixedPtr + index);
-                    var pEnd = pCurrent + following;
+                    var pEnd = block == limit.Block ? block.DataFixedPtr + limit.Index + 1 : pCurrent + following;
                     do
                     {
-                        bytesScanned++;
-
-                        if ((bytesScanned > limitBytes) ||
-                            (block == limitIterator.Block && index > limitIterator.Index))
-                        {
-                            _block = block;
-                            _index = index;
-                            return -1;
-                        }
-
                         if (*pCurrent == byte0)
                         {
                             _block = block;
@@ -382,7 +461,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                         wasLastBlock)
                     {
                         _block = block;
-                        _index = index;
+                        // Ensure iterator is left at limit position
+                        _index = limit.Index;
                         return -1;
                     }
                     block = block.Next;
@@ -423,7 +503,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                 if (block == limit.Block && index > limit.Index)
                                 {
                                     _block = block;
-                                    _index = index;
+                                    // Ensure iterator is left at limit position
+                                    _index = limit.Index;
                                     return -1;
                                 }
 
@@ -438,6 +519,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                                 if (block == limit.Block && _index > limit.Index)
                                 {
+                                    // Ensure iterator is left at limit position
+                                    _index = limit.Index;
                                     return -1;
                                 }
 
@@ -448,6 +531,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             if (block == limit.Block && _index > limit.Index)
                             {
+                                // Ensure iterator is left at limit position
+                                _index = limit.Index;
                                 return -1;
                             }
 
@@ -458,16 +543,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     }
 #endif
                     var pCurrent = (block.DataFixedPtr + index);
-                    var pEnd = pCurrent + following;
+                    var pEnd = block == limit.Block ? block.DataFixedPtr + limit.Index + 1 : pCurrent + following;
                     do
                     {
-                        if (block == limit.Block && index > limit.Index)
-                        {
-                            _block = block;
-                            _index = index;
-                            return -1;
-                        }
-
                         if (*pCurrent == byte0)
                         {
                             _block = block;
@@ -521,7 +599,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                         wasLastBlock)
                     {
                         _block = block;
-                        _index = index;
+                        // Ensure iterator is left at limit position
+                        _index = limit.Index;
                         return -1;
                     }
                     block = block.Next;
@@ -566,7 +645,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                                 if (block == limit.Block && index > limit.Index)
                                 {
                                     _block = block;
-                                    _index = index;
+                                    // Ensure iterator is left at limit position
+                                    _index = limit.Index;
                                     return -1;
                                 }
 
@@ -607,6 +687,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
                             if (block == limit.Block && _index > limit.Index)
                             {
+                                // Ensure iterator is left at limit position
+                                _index = limit.Index;
                                 return -1;
                             }
 
@@ -617,16 +699,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     }
 #endif
                     var pCurrent = (block.DataFixedPtr + index);
-                    var pEnd = pCurrent + following;
+                    var pEnd = block == limit.Block ? block.DataFixedPtr + limit.Index + 1 : pCurrent + following;
                     do
                     {
-                        if (block == limit.Block && index > limit.Index)
-                        {
-                            _block = block;
-                            _index = index;
-                            return -1;
-                        }
-
                         if (*pCurrent == byte0)
                         {
                             _block = block;
