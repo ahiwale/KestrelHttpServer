@@ -1,6 +1,3 @@
-// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-
 using System;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
 
@@ -14,9 +11,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         // Matches the default client_max_body_size in nginx.  Also large enough that most requests
         // should be under the limit.
         private long? _maxRequestBufferSize = 1024 * 1024;
-
-        // Matches the default large_client_header_buffers in nginx.
-        private int _maxRequestLineSize = 8 * 1024;
 
         /// <summary>
         /// Gets or sets whether the <c>Server</c> header should be included in each response.
@@ -67,26 +61,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         }
 
         /// <summary>
-        /// Gets or sets the maximum allowed size for the HTTP request line.
+        /// Provides access to request limit options.
         /// </summary>
-        /// <remarks>
-        /// Defaults to 8,192 bytes (8 KB).
-        /// </remarks>
-        public int MaxRequestLineSize
-        {
-            get
-            {
-                return _maxRequestLineSize;
-            }
-            set
-            {
-                if (value <= 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), "Value must be a positive integer.");
-                }
-                _maxRequestLineSize = value;
-            }
-        }
+        public KestrelServerLimits Limits { get; } = new KestrelServerLimits();
 
         /// <summary>
         /// Set to false to enable Nagle's algorithm for all connections.

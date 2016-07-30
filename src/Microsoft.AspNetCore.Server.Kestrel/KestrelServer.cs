@@ -201,9 +201,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         private void ValidateOptions()
         {
-            if (Options.MaxRequestBufferSize.HasValue && Options.MaxRequestBufferSize < Options.MaxRequestLineSize)
+            if (Options.MaxRequestBufferSize.HasValue && Options.MaxRequestBufferSize < Options.Limits.MaxRequestLineSize)
             {
-                throw new InvalidOperationException("Maximum request buffer size must be greater than or equal to maximum request line size.");
+                throw new InvalidOperationException(
+                    $"Maximum request buffer size ({Options.MaxRequestBufferSize.Value}) must be greater than or equal to maximum request line size ({Options.Limits.MaxRequestLineSize}).");
             }
         }
     }

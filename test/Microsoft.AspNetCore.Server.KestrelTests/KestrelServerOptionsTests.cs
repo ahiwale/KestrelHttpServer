@@ -2,9 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using Microsoft.AspNetCore.Server.Kestrel;
-using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -36,34 +34,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var o = new KestrelServerOptions();
             o.MaxRequestBufferSize = value;
             Assert.Equal(value, o.MaxRequestBufferSize);
-        }
-
-        [Fact]
-        public void MaxRequestLineSizeDefault()
-        {
-            Assert.Equal(8 * 1024, (new KestrelServerOptions()).MaxRequestLineSize);
-        }
-
-        [Theory]
-        [InlineData(int.MinValue)]
-        [InlineData(-1)]
-        [InlineData(0)]
-        public void MaxRequestLineSizeInvalid(int value)
-        {
-            Assert.Throws<ArgumentOutOfRangeException>(() =>
-            {
-                (new KestrelServerOptions()).MaxRequestLineSize = value;
-            });
-        }
-
-        [Theory]
-        [InlineData(1)]
-        [InlineData(int.MaxValue)]
-        public void MaxRequestLineSizeValid(int value)
-        {
-            var o = new KestrelServerOptions();
-            o.MaxRequestLineSize = value;
-            Assert.Equal(value, o.MaxRequestLineSize);
         }
 
         [Fact]

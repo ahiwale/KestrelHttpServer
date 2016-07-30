@@ -175,9 +175,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                     options.UseHttps(@"TestResources/testCert.pfx", "testPassword");
 
                     if (maxRequestBufferSize.HasValue &&
-                        maxRequestBufferSize.Value < options.MaxRequestLineSize)
+                        maxRequestBufferSize.Value < options.Limits.MaxRequestLineSize)
                     {
-                        options.MaxRequestLineSize = (int)maxRequestBufferSize;
+                        options.Limits.MaxRequestLineSize = (int)maxRequestBufferSize;
                     }
                 })
                 .UseUrls("http://127.0.0.1:0/", "https://127.0.0.1:0/")

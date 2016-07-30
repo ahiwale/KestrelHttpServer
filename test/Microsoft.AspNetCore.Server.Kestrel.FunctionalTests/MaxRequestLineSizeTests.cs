@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
             using (var host = BuildWebHost(options =>
             {
-                options.MaxRequestLineSize = maxRequestLineSize;
+                options.Limits.MaxRequestLineSize = maxRequestLineSize;
             }))
             {
                 host.Start();
@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             using (var host = BuildWebHost(options =>
             {
                 options.MaxRequestBufferSize = maxRequestBufferSize;
-                options.MaxRequestLineSize = maxRequestLineSize;
+                options.Limits.MaxRequestLineSize = maxRequestLineSize;
             }))
             {
                 Assert.Throws<InvalidOperationException>(() => host.Start());
